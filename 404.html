@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Abrindo tarefa…</title>
+</head>
+<body>
+  <p>Abrindo tarefa…</p>
+  <script>
+    const taskPath = location.pathname;
+    const marker = taskPath.indexOf("/tasks/");
+    if (marker < 0) {
+      location.replace("../index.html");
+    } else {
+      const base = `${taskPath.slice(0, marker)}/`;
+      location.replace(`${base}index.html?route=${encodeURIComponent(taskPath)}`);
+    }
+  </script>
+</body>
+</html>

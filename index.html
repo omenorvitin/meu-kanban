@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanban Board</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="auth-loading" id="authLoading" role="status" aria-live="polite">Carregando…</div>
+
+<section class="login-screen" id="loginScreen" aria-labelledby="loginTitle" hidden>
+  <div class="login-card">
+    <div class="login-mark" aria-hidden="true">K</div>
+    <h1 id="loginTitle">Entre no seu quadro</h1>
+    <p class="login-intro" id="loginIntro">Informe seu e-mail e sua senha para continuar.</p>
+    <form class="login-form" id="loginForm">
+      <label for="emailInput">E-mail
+        <input type="email" id="emailInput" autocomplete="username" required placeholder="voce@exemplo.com">
+      </label>
+      <div class="field">
+        <label for="passwordInput">Senha</label>
+        <div class="password-field">
+          <input type="password" id="passwordInput" autocomplete="current-password" minlength="8" required placeholder="Mínimo de 8 caracteres">
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button>
+        </div>
+      </div>
+      <label id="confirmPasswordField" for="confirmPasswordInput" hidden>Confirme a senha
+        <input type="password" id="confirmPasswordInput" autocomplete="new-password" minlength="8" placeholder="Digite a senha novamente">
+      </label>
+      <p class="login-error" id="loginMessage" role="alert" aria-live="polite" hidden></p>
+      <button class="btn-primary login-submit" id="loginSubmit" type="submit">Entrar</button>
+    </form>
+    <p class="login-switch"><span id="switchPrompt">Ainda não tem uma conta?</span> <button class="btn-link" id="switchAuthMode" type="button">Criar conta</button></p>
+    <a class="home-link" href="index.html">Voltar à página inicial</a>
+    <p class="login-notice">A conta e as tarefas ficam salvas no Firebase. Não use uma senha importante neste projeto de teste.</p>
+  </div>
+</section>
+
+<header id="appHeader" hidden>
+  <div>
+    <h1 id="boardTitle">Meu Quadro</h1>
+    <p>Arraste os cards entre as colunas para atualizar o andamento.</p>
+  </div>
+  <div class="account-actions">
+    <p class="board-status" id="boardStatus" role="status" aria-live="polite" hidden></p>
+    <span class="account-email" id="accountEmail"></span>
+    <button class="btn-logout" id="logoutBtn" type="button">Sair</button>
+    <label class="board-picker-label" for="boardPicker">Quadro
+      <select id="boardPicker"></select>
+    </label>
+    <button class="btn-ghost" id="newBoardBtn" type="button">Novo quadro</button>
+    <button class="btn-ghost" id="shareBoardBtn" type="button">Compartilhar</button>
+    <button class="btn-ghost" id="configureBoardBtn" type="button">Configurar colunas</button>
+    <button class="btn-add" id="openModal" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Adicionar nova tarefa
+    </button>
+  </div>
+</header>
+
+<main class="board" id="board" hidden>
+  <section class="column" data-status="todo" aria-labelledby="h-todo">
+    <div class="column-head"><h2 id="h-todo">A Fazer</h2><span class="wip" data-wip="todo"></span><span class="count" data-count="todo">0</span></div>
+    <div class="cards" data-list="todo"></div>
+  </section>
+  <section class="column" data-status="doing" aria-labelledby="h-doing">
+    <div class="column-head"><h2 id="h-doing">Em Andamento</h2><span class="wip" data-wip="doing"></span><span class="count" data-count="doing">0</span></div>
+    <div class="cards" data-list="doing"></div>
+  </section>
+  <section class="column" data-status="done" aria-labelledby="h-done">
+    <div class="column-head"><h2 id="h-done">Concluído</h2><span class="wip" data-wip="done"></span><span class="count" data-count="done">0</span></div>
+    <div class="cards" data-list="done"></div>
+  </section>
+</main>
+
+<main class="task-page" id="taskPage" hidden>
+  <button class="btn-ghost" id="backToBoard" type="button">← Voltar ao quadro</button>
+  <section class="task-panel">
+    <p class="task-board-name" id="taskBoardName"></p>
+    <label>Título<input id="detailTitle" maxlength="80"></label>
+    <label>Descrição<textarea id="detailDesc" maxlength="400"></textarea></label>
+    <div class="task-fields">
+      <label>Responsável<select id="assigneeInput"></select></label>
+      <label>Prazo<input type="date" id="dueDateInput"></label>
+      <label>Prioridade
+        <select id="priorityInput"><option value="low">Baixa</option><option value="medium">Média</option><option value="high">Alta</option></select>
+      </label>
+      <label>Labels<input id="labelsInput" placeholder="Bug, feature, urgente"></label>
+      <label>Sprint<input id="sprintInput" maxlength="60" placeholder="Ex.: Sprint 1"></label>
+      <label>Story points<input id="pointsInput" type="number" min="0" max="100" step="1"></label>
+      <label class="backlog-field"><input type="checkbox" id="backlogInput"> No backlog</label>
+      <label class="task-wide">Critérios de aceite<textarea id="acceptanceInput" maxlength="1000"></textarea></label>
+      <label class="task-wide">Definition of Done<textarea id="dodInput" maxlength="1000"></textarea></label>
+    </div>
+    <section class="task-section">
+      <h2>Checklist</h2>
+      <form class="inline-form" id="checklistForm"><input id="checklistInput" maxlength="120" placeholder="Nova subtarefa" required><button class="btn-primary" type="submit">Adicionar</button></form>
+      <ul class="checklist" id="checklist"></ul>
+    </section>
+    <section class="task-section">
+      <h2>Comentários</h2>
+      <form class="inline-form" id="commentForm"><textarea id="commentInput" maxlength="1000" placeholder="Escreva um comentário" required></textarea><button class="btn-primary" type="submit">Comentar</button></form>
+      <div class="comments" id="comments"></div>
+    </section>
+    <section class="task-section">
+      <h2>Histórico de atividades</h2>
+      <ul class="activity-list" id="activityList"></ul>
+    </section>
+  </section>
+</main>
+
+<dialog id="modal" aria-labelledby="modalTitle" hidden>
+  <form class="modal-body" id="taskForm" method="dialog">
+    <h2 id="modalTitle">Nova tarefa</h2>
+    <label>Título
+      <input type="text" id="titleInput" maxlength="80" required placeholder="Ex.: Revisar proposta do cliente">
+    </label>
+    <label>Descrição
+      <textarea id="descInput" maxlength="400" placeholder="Detalhes opcionais da tarefa"></textarea>
+    </label>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="cancelBtn">Cancelar</button>
+      <button type="submit" class="btn-primary">Salvar tarefa</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="shareModal" aria-labelledby="shareTitle" hidden>
+  <form class="modal-body" id="shareForm" method="dialog">
+    <h2 id="shareTitle">Compartilhar quadro</h2>
+    <label>E-mail do usuário
+      <input type="email" id="inviteEmail" required placeholder="colega@exemplo.com">
+    </label>
+    <label>Papel
+      <select id="inviteRole"><option value="EDITOR">Editor</option><option value="VIEWER">Leitor</option></select>
+    </label>
+    <p class="form-hint">O convite será aceito quando a pessoa entrar no app com este e-mail.</p>
+    <div class="task-section"><h2>Membros do quadro</h2><ul class="member-list" id="memberList"></ul></div>
+    <p class="login-error" id="shareMessage" role="alert" hidden></p>
+    <div class="modal-actions"><button type="button" class="btn-ghost" data-close-dialog="shareModal">Fechar</button><button type="submit" class="btn-primary">Enviar convite</button></div>
+  </form>
+</dialog>
+
+<dialog id="boardConfigModal" aria-labelledby="configTitle" hidden>
+  <form class="modal-body" id="boardConfigForm" method="dialog">
+    <h2 id="configTitle">Configurar colunas</h2>
+    <p class="form-hint">Personalize os nomes e os limites de trabalho em andamento (WIP). Use 0 para não limitar.</p>
+    <div class="config-grid">
+      <label>A Fazer<input id="todoName" maxlength="30" required><span>Limite WIP</span><input id="todoWip" type="number" min="0" max="99"></label>
+      <label>Em Andamento<input id="doingName" maxlength="30" required><span>Limite WIP</span><input id="doingWip" type="number" min="0" max="99"></label>
+      <label>Concluído<input id="doneName" maxlength="30" required><span>Limite WIP</span><input id="doneWip" type="number" min="0" max="99"></label>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-ghost" data-close-dialog="boardConfigModal">Cancelar</button><button type="submit" class="btn-primary">Salvar</button></div>
+  </form>
+</dialog>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>

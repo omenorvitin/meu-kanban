@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function boardOwner(boardId) {
+      return signedIn() && (
+        request.auth.uid == boardId ||
+        (exists(/databases/$(database)/documents/boards/$(boardId)) &&
+          get(/databases/$(database)/documents/boards/$(boardId)).data.ownerId == request.auth.uid)
+      );
+    }
+
+    function boardEditor(boardId) {
+      return boardOwner(boardId) ||
+        (signedIn() &&
+          exists(/databases/$(database)/documents/boards/$(boardId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/boards/$(boardId)/members/$(request.auth.uid)).data.role == 'EDITOR');
+    }
+
+    function boardMember(boardId) {
+      return boardOwner(boardId) ||
+        (signedIn() &&
+          exists(/databases/$(database)/documents/boards/$(boardId)/members/$(request.auth.uid)));
+    }
+
+    match /boards/{boardId} {
+      allow get: if boardMember(boardId);
+      allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['name', 'tasks', 'columns', 'wipLimits']);
+      allow update: if boardEditor(boardId) &&
+        request.resource.data.ownerId == resource.data.get('ownerId', boardId);
+      allow delete: if boardOwner(boardId);
+
+      match /members/{memberId} {
+        allow get, list: if boardMember(boardId);
+        allow create: if signedIn() &&
+          request.resource.data.userId == memberId &&
+          request.resource.data.role in ['EDITOR', 'VIEWER'] &&
+          (boardOwner(boardId) ||
+            (request.resource.data.inviteId is string &&
+              exists(/databases/$(database)/documents/invitations/$(request.resource.data.inviteId)) &&
+              get(/databases/$(database)/documents/invitations/$(request.resource.data.inviteId)).data.boardId == boardId &&
+              get(/databases/$(database)/documents/invitations/$(request.resource.data.inviteId)).data.email == request.auth.token.email.lower() &&
+              get(/databases/$(database)/documents/invitations/$(request.resource.data.inviteId)).data.role == request.resource.data.role));
+        allow update: if boardOwner(boardId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.role in ['EDITOR', 'VIEWER'];
+        allow delete: if boardOwner(boardId);
+      }
+    }
+
+    match /invitations/{inviteId} {
+      allow create: if signedIn() &&
+        boardOwner(request.resource.data.boardId) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.email is string &&
+        request.resource.data.role in ['EDITOR', 'VIEWER'];
+      allow get, list: if signedIn() &&
+        resource.data.email == request.auth.token.email.lower();
+      allow delete: if signedIn() &&
+        (resource.data.email == request.auth.token.email.lower() ||
+          boardOwner(resource.data.boardId));
+      allow update: if false;
+    }
+  }
+}
